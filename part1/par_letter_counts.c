@@ -1,0 +1,183 @@
+#include <ctype.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+#include <sys/types.h>
+#include <sys/wait.h>
+#include <unistd.h>
+
+#define ALPHABET_LEN 26
+
+/*
+ * Counts the number of occurrences of each letter (case insensitive) in a text
+ * file and stores the results in an array.
+ * file_name: The name of the text file in which to count letter occurrences
+ * counts: An array of integers storing the number of occurrences of each letter.
+ *     counts[0] is the number of 'a' or 'A' characters, counts [1] is the number
+ *     of 'b' or 'B' characters, and so on.
+ * Returns 0 on success or -1 on error.
+ */
+int count_letters(const char *file_name, int *counts) {
+    FILE *text_file = fopen(file_name, "r");
+    if (text_file == NULL) {
+        perror("fopen");
+        return -1;
+    }
+
+    char letter_c[1];
+    char curr_letter;
+    int index = 0;
+
+    while (fread(letter_c, sizeof(char), 1, text_file) > 0) {
+        curr_letter = letter_c[0];
+        if (isalpha(curr_letter)) {
+            if (isupper(curr_letter)) {
+                curr_letter = tolower(curr_letter);
+            }
+            index = curr_letter - 97;
+            *(counts + index) += 1;
+        }
+    }
+    if (ferror(text_file)) {
+        fclose(text_file);
+        fprintf(stderr, "fread\n");
+        return -1;
+    }
+
+    if (fclose(text_file) == EOF) {
+        perror("fclose");
+        return -1;
+    }
+
+    return 0;
+}
+
+/*
+ * Processes a particular file(counting occurrences of each letter)
+ *     and writes the results to a file descriptor.
+ * This function should be called in child processes.
+ * file_name: The name of the file to analyze.
+ * out_fd: The file descriptor to which results are written
+ * Returns 0 on success or -1 on error
+ */
+int process_file(const char *file_name, int out_fd) {
+    int *counts = malloc(ALPHABET_LEN * sizeof(int));
+    for (int i = 0; i < ALPHABET_LEN; i++) {    // initialize counts array
+        counts[i] = 0;
+    }
+
+    if (count_letters(file_name, counts) == -1) {
+        free(counts);
+        return -1;
+    }
+    if (write(out_fd, counts, ALPHABET_LEN * sizeof(int)) ==
+            -1) {    // Writing letter counts to pipe
+            perror("write");
+            free(counts);
+            return -1;
+    }
+
+    free(counts);
+    return 0;
+}
+
+int main(int argc, char **argv) {
+    if (argc == 1) {
+        // No files to consume, return immediately
+        return 0;
+    }
+
+    // TODO Create a pipe for child processes to write their results
+    int fds[2];
+    int pipe_result = pipe(fds);
+    if (pipe_result < 0) {
+        perror("pipe");
+        return 1;
+    }
+
+    // TODO Fork a child to analyze each specified file (names are argv[1], argv[2], ...)
+    int num_files = argc - 1;
+    for (int i = 0; i < num_files; i++) {
+        pid_t child_pid = fork();
+        if (child_pid == -1) {
+            perror("fork");
+            close(fds[0]);
+            close(fds[1]);
+            return 1;
+        } else if (child_pid == 0) {
+            // Close read end of pipe
+            if (close(fds[0]) == -1) {
+                fprintf(stderr, "Failed to close read end\n");
+                close(fds[1]);
+                return 1;
+            }
+
+            if (process_file(argv[i + 1], fds[1]) == -1) {
+                close(fds[1]);
+                return 1;
+            }
+
+            if (close(fds[1]) == -1) {
+                fprintf(stderr, "Failed to close write end\n");
+                return 1;
+            }
+            exit(0);
+        }
+    }
+
+    if (close(fds[1]) == -1) {
+        fprintf(stderr, "Failed to close write end\n");
+        close(fds[0]);
+        return 1;
+    }
+
+    for (int i = 0; i < num_files; i++) {    // wait for all children before reading from pipe
+        if (wait(NULL) == -1) {
+            fprintf(stderr, "wait failed\n");
+            close(fds[0]);
+            return 1;
+        }
+    }
+
+    // TODO Aggregate all the results together by reading from the pipe in the parent
+    int *counts = malloc(ALPHABET_LEN * sizeof(int));
+    memset(counts, 0, ALPHABET_LEN * sizeof(int));
+
+    int *curr_counts = malloc(ALPHABET_LEN * sizeof(int));
+    memset(curr_counts, 0, ALPHABET_LEN * sizeof(int));
+
+    int eof = 0;
+    int num_bytes_read = 0;
+    while (eof == 0) {
+        num_bytes_read =
+            read(fds[0], curr_counts, ALPHABET_LEN * sizeof(int));    // Read next counts array from pipe
+        if (num_bytes_read < 0) {                               // Error occurred
+            perror("read failed in read_sums_from_pipe()");
+            free(counts);
+            free(curr_counts);
+            return 1;
+        } else if (num_bytes_read == 0) {    // Reached end of file
+            eof = 1;
+        } else {
+            for (int i = 0; i < ALPHABET_LEN; i++) {
+                *(counts + i) += *(curr_counts + i);
+            }
+        }
+    }
+
+    if (close(fds[0]) == -1) {
+        fprintf(stderr, "Failed to close read end\n");
+        free(counts);
+        free(curr_counts);
+        return 1;
+    }
+
+    // TODO Change this code to print out the total count of each letter (case insensitive)
+    for (int i = 0; i < ALPHABET_LEN; i++) {
+        printf("%c Count: %d\n", 'a' + i, counts[i]);
+    }
+
+    free(counts);
+    free(curr_counts);
+    return 0;
+}
