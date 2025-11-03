@@ -1,0 +1,12 @@
+#Ignore all executable files
+*.o
+*.exe
+
+#ignore all binary files
+*.bin
+
+#ignore all text files
+*.txt
+
+#ignore all .tmp files from tests
+*.tmp
