@@ -1,8 +1,0 @@
-===========================================================================================================================================
-== Test 8: Several Multi-Word Input Files
-== Count letter occurrences in several files, each containing multiple words on
-== one line, all lowercase
-Running test...
-Expected output is in file 'test_results/raw/parallel_world_length_count_tests-08-expected.tmp'
-Actual output is in file 'test_results/raw/parallel_world_length_count_tests-08-actual.tmp'
-Test PASSED
