@@ -75,23 +75,32 @@ int tokens_to_commands(strvec_t *tokens, strvec_t ***commands_list_out) {
     return 0;
 }
 
+void free_commands_list(strvec_t **commands_list, int num_elements) {
+    for (int i = 0; i < num_elements; i++) {
+        strvec_clear(commands_list[i]);
+        free(commands_list[i]);
+    }
+    free(commands_list);
+}
+
 int run_pipelined_commands(strvec_t *tokens) {
     // // TODO Complete this function's implementation
 
-    // int num_pipes = strvec_num_occurrences(tokens, "|");
-    // strvec_t tokens_vector;
+    int num_pipes = strvec_num_occurrences(tokens, "|");
+    strvec_t **commands_vector;
+    tokens_to_commands(tokens, &commands_vector);
 
-    // for (int i = 0; i < num_pipes; i++) {
-    //     if (i == 0) {
-    //         // first command
-    //     } else if (i == num_pipes - 1) {
-    //         // last command
-    //     } else {
-    //         // normal command such that input is i-1 and output is i+1
-    //     }
-    //     wait(NULL);    // needs to wait for a child to complete to send the output to the next
-    //     child
-    // }
+    for (int i = 0; i < num_pipes; i++) {
+        if (i == 0) {
+            // first command
+        } else if (i == num_pipes - 1) {
+            // last command
+        } else {
+            // normal command such that input is i-1 and output is i+1
+        }
+        wait(NULL);    // needs to wait for a child to complete to send the output to the next
+        // child
+    }
 
     // Tokenize --> find number of slices and save a vector of tokens
     //  Create pipes
