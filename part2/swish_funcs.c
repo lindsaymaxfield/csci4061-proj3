@@ -3,6 +3,7 @@
 #include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <string.h>    //Added string.h for strcmp
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
@@ -27,10 +28,76 @@
  */
 int run_piped_command(strvec_t *tokens, int *pipes, int n_pipes, int in_idx, int out_idx) {
     // TODO Complete this function's implementation
+
+    //
+    return 0;
+}
+
+int tokens_to_commands(strvec_t *tokens, strvec_t ***commands_list_out) {
+    int num_pipes = strvec_num_occurrences(tokens, "|");
+    int num_cmds = num_pipes + 1;
+
+    strvec_t **commands_list = malloc(num_cmds * sizeof(strvec_t *));
+    if (commands_list == NULL) {
+        return -1;
+    }
+
+    int start = 0;
+    int j = 0;                                     // j indexes command string vectors
+    for (int i = 0; i <= tokens->length; i++) {    // i indexes strvec
+        if (i == tokens->length || strcmp(tokens->data[i], "|") == 0) {
+            commands_list[j] = malloc(sizeof(strvec_t));
+            if (commands_list[j] == NULL) {
+                // Error handling
+                for (int k = 0; k < j; k++) {
+                    strvec_clear(commands_list[k]);
+                    free(commands_list[k]);
+                }
+                free(commands_list);
+                return -1;
+            }
+            if (strvec_slice(tokens, commands_list[j], start, i) == -1) {
+                // Error handling
+                for (int k = 0; k < j; k++) {
+                    strvec_clear(commands_list[k]);
+                    free(commands_list[k]);
+                }
+                free(commands_list);
+                return -1;
+            }
+
+            j++;
+            start = i + 1;
+        }
+    }
+
+    *commands_list_out = commands_list;
     return 0;
 }
 
 int run_pipelined_commands(strvec_t *tokens) {
-    // TODO Complete this function's implementation
+    // // TODO Complete this function's implementation
+
+    // int num_pipes = strvec_num_occurrences(tokens, "|");
+    // strvec_t tokens_vector;
+
+    // for (int i = 0; i < num_pipes; i++) {
+    //     if (i == 0) {
+    //         // first command
+    //     } else if (i == num_pipes - 1) {
+    //         // last command
+    //     } else {
+    //         // normal command such that input is i-1 and output is i+1
+    //     }
+    //     wait(NULL);    // needs to wait for a child to complete to send the output to the next
+    //     child
+    // }
+
+    // Tokenize --> find number of slices and save a vector of tokens
+    //  Create pipes
+    //  fork() a bunch
+    //  run_piped_command in each thing
+    //  if error --> clean up everything
+
     return 0;
 }
