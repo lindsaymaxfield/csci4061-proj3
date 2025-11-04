@@ -86,21 +86,48 @@ void free_commands_list(strvec_t **commands_list, int num_elements) {
 int run_pipelined_commands(strvec_t *tokens) {
     // // TODO Complete this function's implementation
 
-    int num_pipes = strvec_num_occurrences(tokens, "|");
+    // splice the command vectors into an array of strvec_t pointers
     strvec_t **commands_vector;
     tokens_to_commands(tokens, &commands_vector);
 
+    // Create an array of pipes
+    int num_pipes = strvec_num_occurrences(tokens, "|");
+    int *pipe_fds = malloc(2 * num_pipes * sizeof(int));    // TODO: error check
+
+    // Set up pipes
     for (int i = 0; i < num_pipes; i++) {
-        if (i == 0) {
-            // first command
-        } else if (i == num_pipes - 1) {
-            // last command
-        } else {
-            // normal command such that input is i-1 and output is i+1
-        }
-        wait(NULL);    // needs to wait for a child to complete to send the output to the next
-        // child
+        pipe(pipe_fds + 2 * i);    // TODO: error check (with loop)
     }
+
+    // Create child process for each file
+    for (int i = 0; i <= num_pipes; i++) {
+        pid_t childPid = fork();
+        if (childPid == -1) {
+            // error handle
+        } else if (childPid == 0) {
+            if (i == 0) {
+                // first command
+                run_piped_command(commands_vector[i], pipe_fds, num_pipes, -1, (2 * i) + 1);
+
+            } else if (i == num_pipes) {
+                // last command
+                run_piped_command(commands_vector[i], pipe_fds, num_pipes, 2 * (i - 1), -1);
+            } else {
+                // normal command such that input is i-1 and output is i+1
+                run_piped_command(commands_vector[i], pipe_fds, num_pipes, 2 * (i - 1),
+                                  (2 * i) + 1);
+            }
+        }
+    }
+    // Close all pipes in the parent (output goes to terminal, not back to parent)
+    for (int i = 0; i < 2 * num_pipes; i++) {
+        close(pipe_fds[i]);    // TODO: error check
+    }
+    // Wait for all processes to terminate and then free the pipes
+    for (int i = 0; i <= num_pipes; i++) {
+        wait(NULL);
+    }
+    free(pipe_fds);
 
     // Tokenize --> find number of slices and save a vector of tokens
     //  Create pipes
