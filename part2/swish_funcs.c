@@ -29,8 +29,28 @@
 int run_piped_command(strvec_t *tokens, int *pipes, int n_pipes, int in_idx, int out_idx) {
     // TODO Complete this function's implementation
 
-    //
-    return 0;
+    // Close unused pipe ends
+    for (int i = 0; i < 2 * n_pipes; i++) {
+        if (i != in_idx && i != out_idx) {
+            close(pipes[i]);    // TODO: error check
+        }
+    }
+
+    if (in_idx != -1) {
+        dup2(pipes[in_idx], STDIN_FILENO);
+        close(pipes[in_idx]);
+    }
+
+    if (out_idx != -1) {
+        dup2(pipes[out_idx], STDOUT_FILENO);
+        close(pipes[out_idx]);
+    }
+
+    if (run_command(tokens)) {
+        exit(1);
+    }
+
+    exit(0);
 }
 
 int tokens_to_commands(strvec_t *tokens, strvec_t ***commands_list_out) {
@@ -94,6 +114,14 @@ int run_pipelined_commands(strvec_t *tokens) {
     int num_pipes = strvec_num_occurrences(tokens, "|");
     int *pipe_fds = malloc(2 * num_pipes * sizeof(int));    // TODO: error check
 
+    /* TESTING STRVEC_T slicing
+    for (int i = 0; i <= num_pipes; i++) {
+        for (int j = 0; j < commands_vector[i]->length; j++) {
+            printf("%s ", commands_vector[i]->data[j]);
+        }
+        printf("\n");
+    } */
+
     // Set up pipes
     for (int i = 0; i < num_pipes; i++) {
         pipe(pipe_fds + 2 * i);    // TODO: error check (with loop)
@@ -128,6 +156,7 @@ int run_pipelined_commands(strvec_t *tokens) {
         wait(NULL);
     }
     free(pipe_fds);
+    free_commands_list(commands_vector, num_pipes + 1);
 
     // Tokenize --> find number of slices and save a vector of tokens
     //  Create pipes
