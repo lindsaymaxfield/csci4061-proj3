@@ -117,6 +117,7 @@ int main(int argc, char **argv) {
                 exit(1);
             }
 
+            // Close write end of pipe
             if (close(fds[1]) == -1) {
                 perror("close");
                 exit(1);
@@ -125,7 +126,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (close(fds[1]) == -1) {
+    if (close(fds[1]) == -1) { // Close write end of pipe
         perror("close");
         close(fds[0]);
         return 1;
@@ -157,7 +158,7 @@ int main(int argc, char **argv) {
         }
     }
 
-    if (close(fds[0]) == -1) {
+    if (close(fds[0]) == -1) { // Close read end of pipe
         perror("close");
         free(counts);
         free(curr_counts);
@@ -169,7 +170,6 @@ int main(int argc, char **argv) {
     for (int i = 0; i < num_files; i++) {    // Check exit status of all children
         if (wait(&status) == -1) {
             fprintf(stderr, "wait failed\n");
-            close(fds[0]);
             return 1;
         }
         if (WEXITSTATUS(status) != 0) {
