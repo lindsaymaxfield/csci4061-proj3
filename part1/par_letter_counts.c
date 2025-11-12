@@ -24,17 +24,17 @@ int count_letters(const char *file_name, int *counts) {
         return -1;
     }
 
-    char letter_c[1];
-    char curr_letter;
-    int index = 0;
+    char letter_c[1]; // Character array of size one, which is where the next read character from file will be stored
+    char curr_letter; // Current letter that was read from file, not stored in an array
+    int index = 0; // Index of counts to increment based on curr_letter
 
     while (fread(letter_c, sizeof(char), 1, text_file) > 0) {
         curr_letter = letter_c[0];
-        if (isalpha(curr_letter)) {
-            if (isupper(curr_letter)) {
+        if (isalpha(curr_letter)) { // Checking if curr_letter is in alphabet
+            if (isupper(curr_letter)) { // Checking if curr_letter is uppercase. If so, changes to lowercase
                 curr_letter = tolower(curr_letter);
             }
-            index = curr_letter - 97;
+            index = curr_letter - 97; // Since 'a' is 97, this will cause 'a' to be index 0, 'b' to be index 1, and so on
             *(counts + index) += 1;
         }
     }
@@ -62,7 +62,7 @@ int count_letters(const char *file_name, int *counts) {
  */
 int process_file(const char *file_name, int out_fd) {
     int *counts = malloc(ALPHABET_LEN * sizeof(int));
-    for (int i = 0; i < ALPHABET_LEN; i++) {    // initialize counts array
+    for (int i = 0; i < ALPHABET_LEN; i++) {    // Initialize counts array to all zeros
         counts[i] = 0;
     }
 
@@ -87,7 +87,7 @@ int main(int argc, char **argv) {
         return 0;
     }
 
-    // TODO Create a pipe for child processes to write their results
+    // Create a pipe for child processes to write their results
     int fds[2];
     int pipe_result = pipe(fds);
     if (pipe_result < 0) {
@@ -95,7 +95,7 @@ int main(int argc, char **argv) {
         return 1;
     }
 
-    // TODO Fork a child to analyze each specified file (names are argv[1], argv[2], ...)
+    // Fork a child to analyze each specified file (names are argv[1], argv[2], ...)
     int num_files = argc - 1;
     for (int i = 0; i < num_files; i++) {
         pid_t child_pid = fork();
@@ -107,39 +107,31 @@ int main(int argc, char **argv) {
         } else if (child_pid == 0) {
             // Close read end of pipe
             if (close(fds[0]) == -1) {
-                fprintf(stderr, "Failed to close read end\n");
+                perror("close");
                 close(fds[1]);
-                return 1;
+                exit(1);
             }
 
             if (process_file(argv[i + 1], fds[1]) == -1) {
                 close(fds[1]);
-                return 1;
+                exit(1);
             }
 
             if (close(fds[1]) == -1) {
-                fprintf(stderr, "Failed to close write end\n");
-                return 1;
+                perror("close");
+                exit(1);
             }
             exit(0);
         }
     }
 
     if (close(fds[1]) == -1) {
-        fprintf(stderr, "Failed to close write end\n");
+        perror("close");
         close(fds[0]);
         return 1;
     }
 
-    for (int i = 0; i < num_files; i++) {    // wait for all children before reading from pipe
-        if (wait(NULL) == -1) {
-            fprintf(stderr, "wait failed\n");
-            close(fds[0]);
-            return 1;
-        }
-    }
-
-    // TODO Aggregate all the results together by reading from the pipe in the parent
+    // Aggregate all the results together by reading from the pipe in the parent
     int *counts = malloc(ALPHABET_LEN * sizeof(int));
     memset(counts, 0, ALPHABET_LEN * sizeof(int));
 
@@ -166,18 +158,31 @@ int main(int argc, char **argv) {
     }
 
     if (close(fds[0]) == -1) {
-        fprintf(stderr, "Failed to close read end\n");
+        perror("close");
         free(counts);
         free(curr_counts);
         return 1;
     }
 
-    // TODO Change this code to print out the total count of each letter (case insensitive)
+    int status;
+    int ret_val = 0;
+    for (int i = 0; i < num_files; i++) {    // Check exit status of all children
+        if (wait(&status) == -1) {
+            fprintf(stderr, "wait failed\n");
+            close(fds[0]);
+            return 1;
+        }
+        if (WEXITSTATUS(status) != 0) {
+            ret_val = 1;
+        }
+    }
+
+    // Prints out the total count of each letter (case insensitive)
     for (int i = 0; i < ALPHABET_LEN; i++) {
         printf("%c Count: %d\n", 'a' + i, counts[i]);
     }
 
     free(counts);
     free(curr_counts);
-    return 0;
+    return ret_val;
 }
