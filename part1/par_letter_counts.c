@@ -62,6 +62,11 @@ int count_letters(const char *file_name, int *counts) {
  */
 int process_file(const char *file_name, int out_fd) {
     int *counts = malloc(ALPHABET_LEN * sizeof(int));
+    if (counts == NULL) {
+        fprintf(stderr, "malloc\n");
+        return -1;
+    }
+
     for (int i = 0; i < ALPHABET_LEN; i++) {    // Initialize counts array to all zeros
         counts[i] = 0;
     }
@@ -134,9 +139,22 @@ int main(int argc, char **argv) {
 
     // Aggregate all the results together by reading from the pipe in the parent
     int *counts = malloc(ALPHABET_LEN * sizeof(int));
+    if (counts == NULL) {
+        fprintf(stderr, "malloc\n");
+        close(fds[0]);
+        return 1;
+    }
+
     memset(counts, 0, ALPHABET_LEN * sizeof(int));
 
     int *curr_counts = malloc(ALPHABET_LEN * sizeof(int));
+    if (curr_counts == NULL) {
+        fprintf(stderr, "malloc\n");
+        close(fds[0]);
+        free(counts);
+        return 1;
+    }
+
     memset(curr_counts, 0, ALPHABET_LEN * sizeof(int));
 
     int eof = 0;
@@ -169,7 +187,7 @@ int main(int argc, char **argv) {
     int ret_val = 0;
     for (int i = 0; i < num_files; i++) {    // Check exit status of all children
         if (wait(&status) == -1) {
-            fprintf(stderr, "wait failed\n");
+            fprintf(stderr, "wait\n");
             return 1;
         }
         if (WEXITSTATUS(status) != 0) {
