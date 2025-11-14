@@ -32,12 +32,12 @@ int run_piped_command(strvec_t *tokens, int *pipes, int n_pipes, int in_idx, int
         if (i != in_idx && i != out_idx) {
             if (close(pipes[i]) == -1) {
                 perror("close");
-                for (int k = i + 1; k < 2 * n_pipes; k++) { // close pipe ends that have not been attempted to close yet
-                    if (k != in_idx && i != out_idx) {
+                for (int k = i + 1; k < 2 * n_pipes; k++) { // Close pipe ends that have not been attempted to close yet
+                    if (k != in_idx && k != out_idx) {
                         close(pipes[k]);
                     }
                 }
-                close(pipes[in_idx]);
+                close(pipes[in_idx]); // These ends are closed here since in_idx and/or out_idx could be less than i
                 close(pipes[out_idx]);
                 return -1;
             }
@@ -45,7 +45,7 @@ int run_piped_command(strvec_t *tokens, int *pipes, int n_pipes, int in_idx, int
     }
 
     if (in_idx != -1) {
-        if (dup2(pipes[in_idx], STDIN_FILENO) == -1) { // redirect input
+        if (dup2(pipes[in_idx], STDIN_FILENO) == -1) { // Redirect input
             perror("dup2");
             close(pipes[in_idx]);
             close(pipes[out_idx]);
@@ -59,7 +59,7 @@ int run_piped_command(strvec_t *tokens, int *pipes, int n_pipes, int in_idx, int
     }
 
     if (out_idx != -1) {
-        if (dup2(pipes[out_idx], STDOUT_FILENO) == -1) { // redirect output
+        if (dup2(pipes[out_idx], STDOUT_FILENO) == -1) { // Redirect output
             perror("dup2");
             close(pipes[out_idx]);
             return -1;
@@ -145,10 +145,10 @@ void free_commands_list(strvec_t **commands_list, int num_elements) {
  * Returns 0 on success or -1 on error.
  */
 int run_pipelined_commands(strvec_t *tokens) {
-    // splice the command vectors into an array of strvec_t pointers
+    // Splice the command vectors into an array of strvec_t pointers
     strvec_t **commands_vector;
     if (tokens_to_commands(tokens, &commands_vector) == -1) {
-        // error message already printed in tokens_to_commands
+        // Error message already printed in tokens_to_commands
         return -1;
     }
 
@@ -186,8 +186,8 @@ int run_pipelined_commands(strvec_t *tokens) {
     // Create child process for each file
     for (int i = 0; i <= num_pipes; i++) {
         pid_t childPid = fork();
-        if (childPid == -1) { // fork error occurred
-            // error handle
+        if (childPid == -1) { // Fork error occurred
+            // Error handle
             perror("fork");
             for (int k = 0; k < num_pipes; k++) {
                 close(pipe_fds[2 * k]);
@@ -198,29 +198,29 @@ int run_pipelined_commands(strvec_t *tokens) {
             return -1;
         } else if (childPid == 0) {
             if (i == 0) {
-                // first command
+                // First command
                 if (run_piped_command(commands_vector[i], pipe_fds, num_pipes, -1, (2 * i) + 1) == -1) {
-                    // error message will print in run_piped_command and pipe ends will already be closed
+                    // Error message will print in run_piped_command and pipe ends will already be closed
                     free(pipe_fds);
                     free_commands_list(commands_vector, num_pipes + 1);
                     exit(1);
                 }
             } else if (i == num_pipes) {
-                // last command
+                // Last command
                 if (run_piped_command(commands_vector[i], pipe_fds, num_pipes, 2 * (i - 1), -1) == -1) {
                     free(pipe_fds);
                     free_commands_list(commands_vector, num_pipes + 1);
                     exit(1);
                 }
             } else {
-                // normal command such that input is i-1 and output is i+1
+                // Normal command such that input is i-1 and output is i+1
                 if (run_piped_command(commands_vector[i], pipe_fds, num_pipes, 2 * (i - 1), (2 * i) + 1) == -1) {
                     free(pipe_fds);
                     free_commands_list(commands_vector, num_pipes + 1);
                     exit(1);
                 }
             }
-            
+
             free(pipe_fds);
             free_commands_list(commands_vector, num_pipes + 1);
             exit(0);
@@ -231,7 +231,7 @@ int run_pipelined_commands(strvec_t *tokens) {
     for (int i = 0; i < 2 * num_pipes; i++) {
         if (close(pipe_fds[i]) == -1) {
             perror("close");
-            for (int k = i + 1; k < 2 * num_pipes; k++) {
+            for (int k = i + 1; k < 2 * num_pipes; k++) { // Close rest of pipes ends
                 close(pipe_fds[k]);
             }
             free(pipe_fds);
