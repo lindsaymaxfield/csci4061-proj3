@@ -127,6 +127,7 @@ int main(int argc, char **argv) {
                 perror("close");
                 exit(1);
             }
+
             exit(0);
         }
     }
@@ -163,7 +164,8 @@ int main(int argc, char **argv) {
         num_bytes_read =
             read(fds[0], curr_counts, ALPHABET_LEN * sizeof(int));    // Read next counts array from pipe
         if (num_bytes_read < 0) {                               // Error occurred
-            perror("read failed in read_sums_from_pipe()");
+            perror("read");
+            close(fds[0]);
             free(counts);
             free(curr_counts);
             return 1;
@@ -187,7 +189,7 @@ int main(int argc, char **argv) {
     int ret_val = 0;
     for (int i = 0; i < num_files; i++) {    // Check exit status of all children
         if (wait(&status) == -1) {
-            fprintf(stderr, "wait\n");
+            perror("wait");
             return 1;
         }
         if (WEXITSTATUS(status) != 0) {
