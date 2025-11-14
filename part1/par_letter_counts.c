@@ -61,7 +61,7 @@ int count_letters(const char *file_name, int *counts) {
  * Returns 0 on success or -1 on error
  */
 int process_file(const char *file_name, int out_fd) {
-    int *counts = malloc(ALPHABET_LEN * sizeof(int));
+    int *counts = malloc(ALPHABET_LEN * sizeof(int)); // Holds counts for each letter
     if (counts == NULL) {
         fprintf(stderr, "malloc\n");
         return -1;
@@ -104,7 +104,7 @@ int main(int argc, char **argv) {
     int num_files = argc - 1;
     for (int i = 0; i < num_files; i++) {
         pid_t child_pid = fork();
-        if (child_pid == -1) {
+        if (child_pid == -1) { // Error occurred
             perror("fork");
             close(fds[0]);
             close(fds[1]);
@@ -139,7 +139,7 @@ int main(int argc, char **argv) {
     }
 
     // Aggregate all the results together by reading from the pipe in the parent
-    int *counts = malloc(ALPHABET_LEN * sizeof(int));
+    int *counts = malloc(ALPHABET_LEN * sizeof(int)); // Holds total counts from all files
     if (counts == NULL) {
         fprintf(stderr, "malloc\n");
         close(fds[0]);
@@ -148,7 +148,7 @@ int main(int argc, char **argv) {
 
     memset(counts, 0, ALPHABET_LEN * sizeof(int));
 
-    int *curr_counts = malloc(ALPHABET_LEN * sizeof(int));
+    int *curr_counts = malloc(ALPHABET_LEN * sizeof(int)); // Holds counts for current file read from pipe
     if (curr_counts == NULL) {
         fprintf(stderr, "malloc\n");
         close(fds[0]);
@@ -190,6 +190,8 @@ int main(int argc, char **argv) {
     for (int i = 0; i < num_files; i++) {    // Check exit status of all children
         if (wait(&status) == -1) {
             perror("wait");
+            free(counts);
+            free(curr_counts);
             return 1;
         }
         if (WEXITSTATUS(status) != 0) {
