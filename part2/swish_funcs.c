@@ -78,8 +78,9 @@ int run_piped_command(strvec_t *tokens, int *pipes, int n_pipes, int in_idx, int
 }
 
 /**
- * tokens:
- * commands_list_out:
+ * Helper function to allocate and populate a vector of vectors containing commands from the tokens vector.
+ * tokens: Vector to get commands from.
+ * commands_list_out: Vector of vectors that is to be allocated and populated with commands.
  * Returns 0 on success or -1 on error.
  */
 int tokens_to_commands(strvec_t *tokens, strvec_t ***commands_list_out) {
@@ -129,8 +130,10 @@ int tokens_to_commands(strvec_t *tokens, strvec_t ***commands_list_out) {
 }
 
 /**
- * commands_list:
- * num_elements:
+ * Helper function to clear all of the vectors in the vector of vectors and
+ * free the memory of each vector and the vector of vectors.
+ * commands_list: Vector of vectors to clear and free.
+ * num_elements: Number of vectors in commands_list.
  */
 void free_commands_list(strvec_t **commands_list, int num_elements) {
     for (int i = 0; i < num_elements; i++) {
@@ -140,10 +143,6 @@ void free_commands_list(strvec_t **commands_list, int num_elements) {
     free(commands_list);
 }
 
-/**
- * tokens:
- * Returns 0 on success or -1 on error.
- */
 int run_pipelined_commands(strvec_t *tokens) {
     // Splice the command vectors into an array of strvec_t pointers
     strvec_t **commands_vector;
@@ -160,14 +159,6 @@ int run_pipelined_commands(strvec_t *tokens) {
         free_commands_list(commands_vector, num_pipes + 1);
         return -1;
     }
-
-    /* TESTING STRVEC_T slicing
-    for (int i = 0; i <= num_pipes; i++) {
-        for (int j = 0; j < commands_vector[i]->length; j++) {
-            printf("%s ", commands_vector[i]->data[j]);
-        }
-        printf("\n");
-    } */
 
     // Set up pipes
     for (int i = 0; i < num_pipes; i++) {
@@ -239,10 +230,6 @@ int run_pipelined_commands(strvec_t *tokens) {
             return -1;
         }
     }
-    // Wait for all processes to terminate and then free the pipes
-    /*for (int i = 0; i <= num_pipes; i++) {
-        wait(NULL); // ned to get child exit statuses here, not just wait NULL
-    }*/
 
     // Wait for all processes to terminate and then free the pipes
     int status;
@@ -261,12 +248,6 @@ int run_pipelined_commands(strvec_t *tokens) {
 
     free(pipe_fds);
     free_commands_list(commands_vector, num_pipes + 1);
-
-    // Tokenize --> find number of slices and save a vector of tokens
-    //  Create pipes
-    //  fork() a bunch
-    //  run_piped_command in each thing
-    //  if error --> clean up everything
 
     return ret_val;
 }
